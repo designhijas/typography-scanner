@@ -105,6 +105,64 @@ console.log(data);`}
                                 </li>
                             </ul>
                         </div>
+
+                        {/* Sample Response */}
+                        <div className="mt-8">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4">Sample JSON Response</h3>
+                            <div className="bg-slate-900 rounded-xl p-6 overflow-x-auto shadow-lg">
+                                <pre className="text-sm font-mono text-green-300">
+                                    {`{
+  "desktop": [
+    {
+      "name": "Display",
+      "fontFamily": "Inter, sans-serif",
+      "fontSize": "72px",
+      "fontSizePx": 72,
+      "lineHeight": "1.1",
+      "lineHeightPx": 79.2,
+      "fontWeight": "700",
+      "color": "rgb(15, 23, 42)",
+      "tagName": "H1",
+      "isInjected": false
+    },
+    {
+      "name": "H1",
+      "fontFamily": "Inter, sans-serif",
+      "fontSize": "56px",
+      "fontSizePx": 56,
+      "lineHeight": "1.2",
+      "lineHeightPx": 67.2,
+      "fontWeight": "600",
+      "color": "rgb(15, 23, 42)",
+      "tagName": "H2",
+      "isInjected": false
+    }
+    // ... more styles
+  ],
+  "mobile": [
+    {
+      "name": "M_Display",
+      "fontFamily": "Inter, sans-serif",
+      "fontSize": "48px",
+      "fontSizePx": 48,
+      "lineHeight": "1.1",
+      "lineHeightPx": 52.8,
+      "fontWeight": "700",
+      "color": "rgb(15, 23, 42)",
+      "tagName": "H1",
+      "isInjected": false
+    }
+    // ... more styles
+  ],
+  "fontFamilies": [
+    "Inter",
+    "Roboto",
+    "System UI"
+  ]
+}`}
+                                </pre>
+                            </div>
+                        </div>
                     </section>
                 </div>
             </div>
