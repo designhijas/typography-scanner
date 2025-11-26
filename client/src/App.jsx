@@ -16,7 +16,8 @@ function App() {
     setData(null);
 
     try {
-      const response = await fetch('http://localhost:4000/api/scan', {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${API_URL}/api/scan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

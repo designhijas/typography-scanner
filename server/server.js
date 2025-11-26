@@ -1,12 +1,14 @@
 const express = require('express');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
 const cors = require('cors');
 
 const app = express();
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
+const isDev = process.env.NODE_ENV !== 'production';
 
 app.use(cors({
-    origin: 'http://localhost:5173' // Allow requests from Vite frontend
+    origin: isDev ? 'http://localhost:5173' : process.env.FRONTEND_URL || '*'
 }));
 app.use(express.json());
 
@@ -20,10 +22,21 @@ app.post('/api/scan', async (req, res) => {
     let browser;
     try {
         console.log(`Starting scan for: ${url}`);
-        browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
+
+        // Use different browser launch options for dev vs production
+        browser = await puppeteer.launch(
+            isDev
+                ? {
+                    headless: 'new',
+                    args: ['--no-sandbox', '--disable-setuid-sandbox']
+                }
+                : {
+                    args: chromium.args,
+                    defaultViewport: chromium.defaultViewport,
+                    executablePath: await chromium.executablePath(),
+                    headless: chromium.headless,
+                }
+        );
 
         const scrapeStyles = async (viewport) => {
             const page = await browser.newPage();
@@ -46,9 +59,8 @@ app.post('/api/scan', async (req, res) => {
                     if (!el.innerText || el.innerText.trim().length === 0) return;
 
                     const fontSizePx = parseFloat(computed.fontSize);
-                    const lineHeightPx = parseFloat(computed.lineHeight) || fontSizePx * 1.2; // Fallback
+                    const lineHeightPx = parseFloat(computed.lineHeight) || fontSizePx * 1.2;
 
-                    // Create key for deduplication
                     const key = `${computed.fontFamily}-${computed.fontSize}-${computed.fontWeight}-${computed.lineHeight}-${computed.color}`;
 
                     if (!styleMap.has(key)) {
@@ -161,6 +173,11 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
+// For Vercel serverless
+if (isDev) {
+    app.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;
