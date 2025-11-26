@@ -162,6 +162,22 @@ function App() {
               </button>
             </div>
 
+            {/* Font Families Section */}
+            {data.fontFamilies && data.fontFamilies.length > 0 && (
+              <div className="mb-12 p-6 bg-slate-50 rounded-lg border border-slate-200">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4">Font Families Used</h2>
+                <div className="flex flex-wrap gap-3">
+                  {data.fontFamilies.map((family, index) => (
+                    <div key={index} className="px-4 py-2 bg-white border border-slate-200 rounded-md">
+                      <span className="text-sm font-medium text-slate-700" style={{ fontFamily: family }}>
+                        {family}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid lg:grid-cols-2 gap-x-20 gap-y-24">
               {/* Desktop Section */}
               <section>

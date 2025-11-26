@@ -21,7 +21,14 @@ const TypeRow = ({ styleData }) => {
         <div className="group flex flex-col md:flex-row items-baseline gap-8 py-8 border-b border-slate-100 hover:bg-slate-50 transition-colors px-2">
             {/* Left Column: Specs */}
             <div className="w-full md:w-48 flex-shrink-0 flex md:block justify-between items-start">
-                <h3 className="text-sm font-semibold text-slate-900 mb-2">{name}</h3>
+                <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-sm font-semibold text-slate-900">{name}</h3>
+                    {styleData.isInjected && (
+                        <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-bold uppercase tracking-wider">
+                            Generated
+                        </span>
+                    )}
+                </div>
 
                 <div className="text-xs text-slate-400 font-mono space-y-1.5 text-right md:text-left">
                     <div className="flex flex-col">

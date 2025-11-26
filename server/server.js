@@ -60,10 +60,52 @@ app.post('/api/scan', async (req, res) => {
                             lineHeight: computed.lineHeight,
                             lineHeightPx: lineHeightPx,
                             color: computed.color,
-                            tagName: el.tagName
+                            tagName: el.tagName,
+                            isInjected: false
                         });
                     }
                 });
+
+                // Check which heading tags are missing
+                const existingTags = new Set(Array.from(styleMap.values()).map(s => s.tagName));
+                const headingTags = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
+                const missingTags = headingTags.filter(tag => !existingTags.has(tag));
+
+                // Inject missing tags and extract their styles
+                const injectedElements = [];
+                missingTags.forEach(tagName => {
+                    const el = document.createElement(tagName.toLowerCase());
+                    el.textContent = 'Sample text';
+                    el.style.visibility = 'hidden';
+                    el.style.position = 'absolute';
+                    el.style.top = '-9999px';
+                    document.body.appendChild(el);
+                    injectedElements.push(el);
+
+                    const computed = window.getComputedStyle(el);
+                    const fontSizePx = parseFloat(computed.fontSize);
+                    const lineHeightPx = parseFloat(computed.lineHeight) || fontSizePx * 1.2;
+
+                    const key = `${computed.fontFamily}-${computed.fontSize}-${computed.fontWeight}-${computed.lineHeight}-${computed.color}`;
+
+                    if (!styleMap.has(key)) {
+                        styleMap.set(key, {
+                            fontFamily: computed.fontFamily,
+                            fontSize: computed.fontSize,
+                            fontSizePx: fontSizePx,
+                            fontWeight: computed.fontWeight,
+                            lineHeight: computed.lineHeight,
+                            lineHeightPx: lineHeightPx,
+                            color: computed.color,
+                            tagName: tagName,
+                            isInjected: true
+                        });
+                    }
+                });
+
+                // Clean up injected elements
+                injectedElements.forEach(el => el.remove());
+
                 return Array.from(styleMap.values());
             });
 
@@ -94,9 +136,19 @@ app.post('/api/scan', async (req, res) => {
             });
         };
 
+        // Extract unique font families
+        const allStyles = [...desktopStyles, ...mobileStyles];
+        const fontFamiliesSet = new Set();
+        allStyles.forEach(style => {
+            const cleanFamily = style.fontFamily.replace(/['"]/g, '').split(',')[0].trim();
+            fontFamiliesSet.add(cleanFamily);
+        });
+        const fontFamilies = Array.from(fontFamiliesSet);
+
         res.json({
             desktop: generateNames(desktopStyles),
-            mobile: generateNames(mobileStyles, 'M_')
+            mobile: generateNames(mobileStyles, 'M_'),
+            fontFamilies: fontFamilies
         });
 
     } catch (error) {
