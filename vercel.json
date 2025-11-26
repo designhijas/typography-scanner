@@ -1,11 +1,26 @@
 {
-    "buildCommand": "cd client && npm install && npm run build",
-    "outputDirectory": "client/dist",
-    "installCommand": "cd server && npm install",
-    "rewrites": [
+    "version": 2,
+    "builds": [
         {
-            "source": "/api/scan",
-            "destination": "/api/scan.js"
+            "src": "client/package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "distDir": "dist"
+            }
+        },
+        {
+            "src": "api/scan.js",
+            "use": "@vercel/node"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/api/scan",
+            "dest": "/api/scan.js"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/client/$1"
         }
     ]
 }
