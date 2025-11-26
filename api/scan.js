@@ -8,7 +8,9 @@ const PORT = process.env.PORT || 4000;
 const isDev = process.env.NODE_ENV !== 'production';
 
 app.use(cors({
-    origin: isDev ? 'http://localhost:5173' : process.env.FRONTEND_URL || '*'
+    origin: '*', // Allow all origins for now to fix CORS issues
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type']
 }));
 app.use(express.json());
 
