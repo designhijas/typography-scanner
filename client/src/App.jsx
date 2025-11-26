@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import TypeRow from './components/TypeRow';
+import ApiDocs from './ApiDocs';
 
-function App() {
+function Scanner() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
@@ -103,9 +105,14 @@ function App() {
       <div className="max-w-[1400px] mx-auto px-6 py-16 md:py-24">
         {/* Header */}
         <div className="mb-20 max-w-2xl">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900 mb-6">
-            A Visual Type Scale
-          </h1>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
+              A Visual Type Scale
+            </h1>
+            <Link to="/api-docs" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">
+              Use API →
+            </Link>
+          </div>
           <p className="text-lg text-slate-500 mb-10 leading-relaxed">
             Enter a website URL to extract its typography hierarchy.
             We'll generate a visual scale for both desktop and mobile viewports.
@@ -208,6 +215,17 @@ function App() {
         )}
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Scanner />} />
+        <Route path="/api-docs" element={<ApiDocs />} />
+      </Routes>
+    </Router>
   );
 }
 
