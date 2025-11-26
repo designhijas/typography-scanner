@@ -37,6 +37,66 @@ function App() {
     }
   };
 
+  const exportToJSON = (viewport) => {
+    if (!data) return;
+
+    const styles = viewport === 'desktop' ? data.desktop : data.mobile;
+    const allStyles = [...data.desktop, ...data.mobile];
+
+    // Extract unique font families (max 3)
+    const fontFamiliesSet = new Set();
+    allStyles.forEach(style => {
+      const cleanFamily = style.fontFamily.replace(/['"]/g, '').split(',')[0].trim();
+      fontFamiliesSet.add(cleanFamily);
+    });
+    const fontFamilies = Array.from(fontFamiliesSet).slice(0, 3);
+
+    // Build the JSON object
+    const tokens = {};
+
+    // Add font families
+    const familyLabels = ['primary', 'secondary', 'accent'];
+    fontFamilies.forEach((family, index) => {
+      tokens[`_fontFamilies.${familyLabels[index]}`] = {
+        "$type": "fontFamily",
+        "$value": family
+      };
+    });
+
+    // Add font sizes and line heights
+    styles.forEach(style => {
+      const name = style.name;
+      const sizeInPx = Math.round(style.fontSizePx);
+
+      // Font size
+      tokens[name] = {
+        "$type": "dimension",
+        "$value": `${sizeInPx}px`
+      };
+
+      // Line height
+      const lhPercent = style.lineHeightPx && style.fontSizePx
+        ? Math.round((style.lineHeightPx / style.fontSizePx) * 100)
+        : 110;
+
+      tokens[`LH-${name}`] = {
+        "$type": "dimension",
+        "$value": `${lhPercent}%`
+      };
+    });
+
+    // Download as JSON file
+    const blob = new Blob([JSON.stringify(tokens, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `typography-tokens-${viewport}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 selection:bg-black selection:text-white">
       <div className="max-w-[1400px] mx-auto px-6 py-16 md:py-24">
@@ -79,31 +139,55 @@ function App() {
 
         {/* Results */}
         {data && (
-          <div className="grid lg:grid-cols-2 gap-x-20 gap-y-24">
-            {/* Desktop Section */}
-            <section>
-              <div className="mb-8 border-b border-slate-200 pb-4">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">Desktop Typography</h2>
-              </div>
-              <div className="space-y-0">
-                {data.desktop.map((style, index) => (
-                  <TypeRow key={`desktop-${index}`} styleData={style} />
-                ))}
-              </div>
-            </section>
+          <>
+            {/* Export Buttons */}
+            <div className="mb-8 flex justify-end gap-3">
+              <button
+                onClick={() => exportToJSON('desktop')}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white font-medium hover:bg-slate-800 transition-all active:scale-95"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export Desktop
+              </button>
+              <button
+                onClick={() => exportToJSON('mobile')}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white font-medium hover:bg-slate-800 transition-all active:scale-95"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export Mobile
+              </button>
+            </div>
 
-            {/* Mobile Section */}
-            <section>
-              <div className="mb-8 border-b border-slate-200 pb-4">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">Mobile Typography</h2>
-              </div>
-              <div className="space-y-0">
-                {data.mobile.map((style, index) => (
-                  <TypeRow key={`mobile-${index}`} styleData={style} />
-                ))}
-              </div>
-            </section>
-          </div>
+            <div className="grid lg:grid-cols-2 gap-x-20 gap-y-24">
+              {/* Desktop Section */}
+              <section>
+                <div className="mb-8 border-b border-slate-200 pb-4">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">Desktop Typography</h2>
+                </div>
+                <div className="space-y-0">
+                  {data.desktop.map((style, index) => (
+                    <TypeRow key={`desktop-${index}`} styleData={style} />
+                  ))}
+                </div>
+              </section>
+
+              {/* Mobile Section */}
+              <section>
+                <div className="mb-8 border-b border-slate-200 pb-4">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">Mobile Typography</h2>
+                </div>
+                <div className="space-y-0">
+                  {data.mobile.map((style, index) => (
+                    <TypeRow key={`mobile-${index}`} styleData={style} />
+                  ))}
+                </div>
+              </section>
+            </div>
+          </>
         )}
       </div>
     </div>
