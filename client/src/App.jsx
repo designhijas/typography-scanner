@@ -19,7 +19,10 @@ function Scanner() {
 
     try {
       const API_URL = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${API_URL}/api/scan`, {
+      const targetUrl = `${API_URL}/api/scan`;
+      console.log('Attempting to fetch from:', targetUrl);
+
+      const response = await fetch(targetUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -28,7 +31,7 @@ function Scanner() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch data from server');
+        throw new Error(`Server error: ${response.status} ${response.statusText} at ${targetUrl}`);
       }
 
       const result = await response.json();
