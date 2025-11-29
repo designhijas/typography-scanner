@@ -31,7 +31,10 @@ function Scanner() {
       });
 
       if (!response.ok) {
-        throw new Error(`Server error: ${response.status} ${response.statusText} at ${targetUrl}`);
+        if (response.status === 404) {
+          throw new Error(`API Endpoint not found (${targetUrl}). Please ensure VITE_API_URL environment variable is set correctly in Amplify.`);
+        }
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
