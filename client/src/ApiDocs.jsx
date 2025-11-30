@@ -30,7 +30,7 @@ const ApiDocs = () => {
                             <code className="text-xl font-mono text-slate-900">/api/scan</code>
                         </div>
                         <p className="text-slate-600 mb-6">
-                            Scrapes a given URL and returns extracted typography styles for both desktop and mobile viewports.
+                            Scrapes a given URL (and optionally its navigation links) to extract a comprehensive design system including typography, colors, spacing, borders, and components.
                         </p>
 
                         <div className="bg-slate-900 rounded-xl overflow-hidden shadow-2xl">
@@ -41,7 +41,8 @@ const ApiDocs = () => {
                             <div className="p-6 overflow-x-auto">
                                 <pre className="text-sm font-mono text-blue-300">
                                     {`{
-  "url": "https://example.com"
+  "url": "https://example.com",
+  "scanMultiplePages": true  // Optional: Scans homepage + up to 19 nav pages
 }`}
                                 </pre>
                             </div>
@@ -59,7 +60,7 @@ const ApiDocs = () => {
                                     <pre className="text-sm font-mono text-slate-300 whitespace-pre-wrap">
                                         {`curl -X POST https://typography-scanner.vercel.app/api/scan \\
   -H "Content-Type: application/json" \\
-  -d '{"url": "https://apple.com"}'`}
+  -d '{"url": "https://apple.com", "scanMultiplePages": true}'`}
                                     </pre>
                                 </div>
                             </div>
@@ -74,7 +75,8 @@ const ApiDocs = () => {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    url: 'https://apple.com'
+    url: 'https://apple.com',
+    scanMultiplePages: true
   })
 });
 
@@ -92,16 +94,24 @@ console.log(data);`}
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
                             <ul className="space-y-4 text-slate-600">
                                 <li className="flex gap-3">
-                                    <span className="font-mono text-sm font-bold text-slate-900 min-w-[120px]">desktop</span>
-                                    <span>Array of typography objects found on 1920x1080 viewport.</span>
+                                    <span className="font-mono text-sm font-bold text-slate-900 min-w-[120px]">typography</span>
+                                    <span>Object containing desktop and mobile type scales, plus font families.</span>
                                 </li>
                                 <li className="flex gap-3">
-                                    <span className="font-mono text-sm font-bold text-slate-900 min-w-[120px]">mobile</span>
-                                    <span>Array of typography objects found on 375x812 viewport.</span>
+                                    <span className="font-mono text-sm font-bold text-slate-900 min-w-[120px]">colors</span>
+                                    <span>Palette, backgrounds, text colors, borders, and gradients.</span>
                                 </li>
                                 <li className="flex gap-3">
-                                    <span className="font-mono text-sm font-bold text-slate-900 min-w-[120px]">fontFamilies</span>
-                                    <span>Array of unique font family strings used on the page.</span>
+                                    <span className="font-mono text-sm font-bold text-slate-900 min-w-[120px]">components</span>
+                                    <span>Extracted buttons and input fields (text, select, checkbox, etc.) with states.</span>
+                                </li>
+                                <li className="flex gap-3">
+                                    <span className="font-mono text-sm font-bold text-slate-900 min-w-[120px]">spacing</span>
+                                    <span>Common gaps and container widths.</span>
+                                </li>
+                                <li className="flex gap-3">
+                                    <span className="font-mono text-sm font-bold text-slate-900 min-w-[120px]">scannedPages</span>
+                                    <span>Total number of pages analyzed.</span>
                                 </li>
                             </ul>
                         </div>
@@ -112,52 +122,56 @@ console.log(data);`}
                             <div className="bg-slate-900 rounded-xl p-6 overflow-x-auto shadow-lg">
                                 <pre className="text-sm font-mono text-green-300">
                                     {`{
-  "desktop": [
-    {
-      "name": "Display",
-      "fontFamily": "Inter, sans-serif",
-      "fontSize": "72px",
-      "fontSizePx": 72,
-      "lineHeight": "1.1",
-      "lineHeightPx": 79.2,
-      "fontWeight": "700",
-      "color": "rgb(15, 23, 42)",
-      "tagName": "H1",
-      "isInjected": false
-    },
-    {
-      "name": "H1",
-      "fontFamily": "Inter, sans-serif",
-      "fontSize": "56px",
-      "fontSizePx": 56,
-      "lineHeight": "1.2",
-      "lineHeightPx": 67.2,
-      "fontWeight": "600",
-      "color": "rgb(15, 23, 42)",
-      "tagName": "H2",
-      "isInjected": false
+  "typography": {
+    "desktop": [
+      {
+        "name": "Display",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": "72px",
+        "fontWeight": "700",
+        "color": "rgb(15, 23, 42)"
+      }
+    ],
+    "mobile": [],
+    "fontFamilies": ["Inter", "Roboto"]
+  },
+  "colors": {
+    "palette": ["#0F172A", "#3B82F6", "#FFFFFF"],
+    "backgrounds": ["#FFFFFF", "#F8FAFC"],
+    "text": ["#0F172A", "#64748B"]
+  },
+  "components": {
+    "buttons": [
+      {
+        "bg": "rgb(59, 130, 246)",
+        "color": "rgb(255, 255, 255)",
+        "borderRadius": "8px",
+        "padding": "12px 24px"
+      }
+    ],
+    "inputs": {
+      "textInputs": [
+        {
+          "type": "text",
+          "base": {
+            "bg": "rgb(255, 255, 255)",
+            "border": "1px solid rgb(203, 213, 225)",
+            "radius": "6px"
+          },
+          "focus": {
+            "borderColor": "rgb(59, 130, 246)",
+            "shadow": "0 0 0 3px rgba(59, 130, 246, 0.5)"
+          }
+        }
+      ],
+      "checkboxes": [],
+      "toggles": []
     }
-    // ... more styles
-  ],
-  "mobile": [
-    {
-      "name": "M_Display",
-      "fontFamily": "Inter, sans-serif",
-      "fontSize": "48px",
-      "fontSizePx": 48,
-      "lineHeight": "1.1",
-      "lineHeightPx": 52.8,
-      "fontWeight": "700",
-      "color": "rgb(15, 23, 42)",
-      "tagName": "H1",
-      "isInjected": false
-    }
-    // ... more styles
-  ],
-  "fontFamilies": [
-    "Inter",
-    "Roboto",
-    "System UI"
+  },
+  "scannedPages": 5,
+  "scannedUrls": [
+    "https://example.com",
+    "https://example.com/about"
   ]
 }`}
                                 </pre>

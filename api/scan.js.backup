@@ -98,8 +98,8 @@ app.post('/api/scan', async (req, res) => {
         if (scanMultiplePages) {
             console.log('Extracting navigation links...');
             const navLinks = await extractNavLinks(url);
-            // Add up to 19 additional pages (total 20 including homepage)
-            urlsToScan = [url, ...navLinks.slice(0, 19)];
+            // Add up to 6 additional pages (total 7 including homepage)
+            urlsToScan = [url, ...navLinks.slice(0, 6)];
             console.log(`Found ${navLinks.length} nav links, scanning ${urlsToScan.length} pages total`);
         }
 
@@ -540,230 +540,61 @@ app.post('/api/scan', async (req, res) => {
 
                 await page.close();
                 return data;
-            } catch (error) {
-                console.error(`Error scraping ${pageUrl}:`, error);
-                await page.close();
-                return null;
+            };
+
+            // Scrape Desktop
+            const desktopData = await scrapeDesignSystem({ width: 1920, height: 1080 });
+
+            // Scrape Mobile (mainly for typography differences, but we can merge others if needed)
+            const mobileData = await scrapeDesignSystem({ width: 375, height: 812 });
+
+            // Helper to generate typography names
+            const generateNames = (styles, prefix = '') => {
+                return styles.sort((a, b) => b.fontSizePx - a.fontSizePx).map((style, index) => {
+                    let name = `Text_${index + 1}`;
+                    if (index === 0) name = `${prefix}Display`;
+                    else if (index === 1) name = `${prefix}H1`;
+                    else if (index === 2) name = `${prefix}H2`;
+                    else if (index === 3) name = `${prefix}H3`;
+                    else if (index === 4) name = `${prefix}H4`;
+                    else if (index === 5) name = `${prefix}H5`;
+                    else if (index === 6) name = `${prefix}H6`;
+                    else name = `${prefix}Text_${index - 6}`;
+
+                    return { ...style, name };
+                });
+            };
+
+            // Extract unique font families
+            const allStyles = [...desktopData.typography, ...mobileData.typography];
+            const fontFamiliesSet = new Set();
+            allStyles.forEach(style => {
+                const cleanFamily = style.fontFamily.replace(/['"]/g, '').split(',')[0].trim();
+                fontFamiliesSet.add(cleanFamily);
+            });
+
+            res.json({
+                typography: {
+                    desktop: generateNames(desktopData.typography),
+                    mobile: generateNames(mobileData.typography, 'M_'),
+                    fontFamilies: Array.from(fontFamiliesSet)
+                },
+                colors: desktopData.colors,
+                spacing: desktopData.spacing,
+                borders: desktopData.borders,
+                components: desktopData.components,
+                brand: desktopData.brand
+            });
+
+        } catch (error) {
+            console.error('Scraping error:', error);
+            res.status(500).json({ error: 'Failed to scan the website', details: error.message });
+        } finally {
+            if (browser) {
+                await browser.close();
             }
-        };
-
-        // Scan all pages and aggregate data
-        const allPagesData = [];
-
-        for (const pageUrl of urlsToScan) {
-            console.log(`Scanning: ${pageUrl}`);
-            const desktopData = await scrapeDesignSystem(pageUrl, { width: 1920, height: 1080 });
-            const mobileData = await scrapeDesignSystem(pageUrl, { width: 375, height: 812 });
-
-            if (desktopData && mobileData) {
-                allPagesData.push({ desktop: desktopData, mobile: mobileData });
-            }
         }
-
-        if (allPagesData.length === 0) {
-            throw new Error('Failed to scan any pages');
-        }
-
-        // Aggregate data from all pages
-        const aggregateData = (dataArray) => {
-            const aggregated = {
-                typography: [],
-                colors: { palette: new Set(), backgrounds: new Set(), text: new Set(), borders: new Set(), gradients: new Set(), dominant: [] },
-                spacing: { gaps: new Set(), containerWidths: [] },
-                borders: { radius: new Set(), widths: new Set(), boxShadows: new Set() },
-                components: { buttons: [], inputs: { textInputs: [], textareas: [], selects: [], checkboxes: [], radios: [], toggles: [] } },
-                brand: { logo: null, socialLinks: new Set(), meta: {} }
-            };
-
-            dataArray.forEach(data => {
-                // Typography
-                aggregated.typography.push(...data.typography);
-
-                // Colors
-                data.colors.palette.forEach(c => aggregated.colors.palette.add(c));
-                data.colors.backgrounds.forEach(c => aggregated.colors.backgrounds.add(c));
-                data.colors.text.forEach(c => aggregated.colors.text.add(c));
-                data.colors.borders.forEach(c => aggregated.colors.borders.add(c));
-                data.colors.gradients.forEach(g => aggregated.colors.gradients.add(g));
-
-                // Spacing
-                data.spacing.gaps.forEach(g => aggregated.spacing.gaps.add(g));
-                aggregated.spacing.containerWidths.push(...data.spacing.containerWidths);
-
-                // Borders
-                data.borders.radius.forEach(r => aggregated.borders.radius.add(r));
-                data.borders.widths.forEach(w => aggregated.borders.widths.add(w));
-                data.borders.boxShadows.forEach(s => aggregated.borders.boxShadows.add(s));
-
-                // Components
-                aggregated.components.buttons.push(...data.components.buttons);
-                Object.keys(data.components.inputs).forEach(key => {
-                    if (data.components.inputs[key]) {
-                        aggregated.components.inputs[key].push(...data.components.inputs[key]);
-                    }
-                });
-
-                // Brand
-                if (data.brand.logo && !aggregated.brand.logo) {
-                    aggregated.brand.logo = data.brand.logo;
-                }
-                data.brand.socialLinks.forEach(link => aggregated.brand.socialLinks.add(link));
-                if (data.brand.meta) {
-                    aggregated.brand.meta = { ...aggregated.brand.meta, ...data.brand.meta };
-                }
-            });
-
-            // Helper to deduplicate objects based on content
-            const deduplicateObjects = (arr) => {
-                const unique = new Map();
-                arr.forEach(item => {
-                    // Create a signature for the object
-                    // We want to group by visual style, ignoring layout dimensions and content
-
-                    // Deep clone to avoid mutating original for the signature
-                    const sig = JSON.parse(JSON.stringify(item));
-
-                    // Remove content-specific fields
-                    delete sig.text;
-                    delete sig.label;
-                    delete sig.placeholder;
-                    delete sig.name;
-                    delete sig.id;
-                    delete sig.href; // For links/buttons
-
-                    // Remove layout-specific fields that might vary by instance
-                    delete sig.width;
-                    delete sig.height;
-
-                    // For inputs which have 'base' and 'focus' objects
-                    if (sig.base) {
-                        delete sig.base.width;
-                        delete sig.base.height;
-                    }
-
-                    // Sort keys to ensure consistent order for stringify
-                    // (JSON.stringify order is generally consistent but this is safer)
-                    const signature = JSON.stringify(sig, Object.keys(sig).sort());
-
-                    if (!unique.has(signature)) {
-                        unique.set(signature, item);
-                    }
-                });
-                return Array.from(unique.values());
-            };
-
-            // Deduplicate Typography (keep exact matches)
-            const uniqueTypography = (() => {
-                const unique = new Map();
-                aggregated.typography.forEach(item => {
-                    // For typography, we want exact style matches
-                    const signature = JSON.stringify({
-                        fontFamily: item.fontFamily,
-                        fontSize: item.fontSize,
-                        fontWeight: item.fontWeight,
-                        lineHeight: item.lineHeight,
-                        letterSpacing: item.letterSpacing,
-                        textTransform: item.textTransform
-                    });
-                    if (!unique.has(signature)) {
-                        unique.set(signature, item);
-                    }
-                });
-                return Array.from(unique.values());
-            })();
-
-            // Deduplicate Components
-            const uniqueButtons = deduplicateObjects(aggregated.components.buttons);
-            const uniqueInputs = {};
-            Object.keys(aggregated.components.inputs).forEach(key => {
-                uniqueInputs[key] = deduplicateObjects(aggregated.components.inputs[key]);
-            });
-
-            // Deduplicate Container Widths
-            const uniqueContainerWidths = [...new Set(aggregated.spacing.containerWidths)];
-
-            return {
-                typography: uniqueTypography,
-                colors: {
-                    palette: Array.from(aggregated.colors.palette),
-                    backgrounds: Array.from(aggregated.colors.backgrounds),
-                    text: Array.from(aggregated.colors.text),
-                    borders: Array.from(aggregated.colors.borders),
-                    gradients: Array.from(aggregated.colors.gradients),
-                    dominant: Array.from(aggregated.colors.palette).slice(0, 10)
-                },
-                spacing: {
-                    gaps: Array.from(aggregated.spacing.gaps).sort((a, b) => parseFloat(a) - parseFloat(b)),
-                    containerWidths: uniqueContainerWidths.sort((a, b) => parseFloat(a) - parseFloat(b))
-                },
-                borders: {
-                    radius: Array.from(aggregated.borders.radius).sort((a, b) => parseFloat(a) - parseFloat(b)),
-                    widths: Array.from(aggregated.borders.widths).sort((a, b) => parseFloat(a) - parseFloat(b)),
-                    boxShadows: Array.from(aggregated.borders.boxShadows)
-                },
-                components: {
-                    buttons: uniqueButtons,
-                    inputs: uniqueInputs
-                },
-                brand: {
-                    ...aggregated.brand,
-                    socialLinks: Array.from(aggregated.brand.socialLinks)
-                }
-            };
-        };
-
-        const desktopData = aggregateData(allPagesData.map(p => p.desktop));
-        const mobileData = aggregateData(allPagesData.map(p => p.mobile));
-
-        // Helper to generate typography names
-        const generateNames = (styles, prefix = '') => {
-            return styles.sort((a, b) => b.fontSizePx - a.fontSizePx).map((style, index) => {
-                let name = `Text_${index + 1}`;
-                if (index === 0) name = `${prefix}Display`;
-                else if (index === 1) name = `${prefix}H1`;
-                else if (index === 2) name = `${prefix}H2`;
-                else if (index === 3) name = `${prefix}H3`;
-                else if (index === 4) name = `${prefix}H4`;
-                else if (index === 5) name = `${prefix}H5`;
-                else if (index === 6) name = `${prefix}H6`;
-                else name = `${prefix}Text_${index - 6}`;
-
-                return { ...style, name };
-            });
-        };
-
-        // Extract unique font families
-        const allStyles = [...desktopData.typography, ...mobileData.typography];
-        const fontFamiliesSet = new Set();
-        allStyles.forEach(style => {
-            const cleanFamily = style.fontFamily.replace(/['"]/g, '').split(',')[0].trim();
-            fontFamiliesSet.add(cleanFamily);
-        });
-
-        res.json({
-            typography: {
-                desktop: generateNames(desktopData.typography),
-                mobile: generateNames(mobileData.typography, 'M_'),
-                fontFamilies: Array.from(fontFamiliesSet)
-            },
-            colors: desktopData.colors,
-            spacing: desktopData.spacing,
-            borders: desktopData.borders,
-            components: desktopData.components,
-            brand: desktopData.brand,
-            scannedPages: urlsToScan.length,
-            scannedUrls: urlsToScan
-        });
-
-    } catch (error) {
-        console.error('Scraping error:', error);
-        res.status(500).json({ error: 'Failed to scan the website', details: error.message });
-    } finally {
-        if (browser) {
-            await browser.close();
-        }
-    }
-});
+    });
 
 // For Vercel serverless
 if (isDev) {
